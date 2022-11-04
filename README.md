@@ -89,8 +89,7 @@ Springboot使用hikari连接池并进行Kerberos认证访问Impala的demo地址:
 
 
 
-所以我们思路可以是，修改hikari的源码，在`com.zaxxer.hikari.util.DriverDataSource#getConnection()`方法调用 `driver.connect(jdbcUrl, driverProperties)`之前认证即可
-并且hikari连接池的max-lifetime参数要小于Kerberos的过期时长
+所以我们思路可以是，修改hikari的源码，在`com.zaxxer.hikari.util.DriverDataSource#getConnection()`方法调用 `driver.connect(jdbcUrl, driverProperties)`之前认证即可。并且hikari连接池的max-lifetime参数要小于Kerberos的过期时长
 
 
 ## 2.修改Hikari源码，使其支持Kerberos认证
