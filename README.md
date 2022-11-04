@@ -3,9 +3,9 @@
 
 
 
-修改后的源码地址:https://github.com/Raray-chuan/HikariCP-4.0.3
+修改后的Hikari源码地址:https://github.com/Raray-chuan/HikariCP-4.0.3
 
-验证的springboot项目地址:https://github.com/Raray-chuan/springboot-kerberos-hikari-impala
+Springboot使用hikari连接池并进行Kerberos认证访问Impala的demo地址:https://github.com/Raray-chuan/springboot-kerberos-hikari-impala
 
 
 
@@ -329,7 +329,7 @@ HikariCP-4.0.3要求的maven版本是3.3.9，必须使用apache-maven-3.3.9才�
 
 
 
-**2.添加toolchains.xml文档 **
+**2.添加toolchains.xml文档**
 
 toolchains.xml文件的内容：
 
