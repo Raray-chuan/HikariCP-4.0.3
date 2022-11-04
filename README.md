@@ -9,7 +9,87 @@ Springboot使用hikari连接池并进行Kerberos认证访问Impala的demo地址:
 
 
 
-## 1.解读源码，了解Hikari连接池如何保持Connection个数在一定数目上
+## 1. Java连接impala的Kerberos认证
+
+```java
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.security.UserGroupInformation;
+
+import java.io.IOException;
+import java.security.PrivilegedAction;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.Statement;
+/**
+ * @Author Xichuan
+ * @Date 2022/10/28 17:53
+ * @Description
+ */
+public class TestKerberosImpala {
+        public static final String KRB5_CONF = "D:\\development\\license_dll\\krb5.conf";
+        public static final String PRINCIPAL = "xichuan/admin@XICHUAN.COM";
+        public static final String KEYTAB = "D:\\development\\license_dll\\xichuan.keytab";
+        public static String connectionUrl = "jdbc:impala://node01:21050/;AuthMech=1;KrbRealm=XICHUAN.COM;KrbHostFQDN=node01;KrbServiceName=impala";
+        public static String jdbcDriverName = "com.cloudera.impala.jdbc41.Driver";
+
+        public static void main(String[] args) throws Exception {
+            UserGroupInformation loginUser = kerberosAuth(KRB5_CONF,KEYTAB,PRINCIPAL);
+
+            int result = loginUser.doAs((PrivilegedAction<Integer>) () -> {
+                int result1 = 0;
+                try {
+                    Class.forName(jdbcDriverName);
+                } catch (ClassNotFoundException e) {
+                    e.printStackTrace();
+                }
+                try (Connection con = DriverManager.getConnection(connectionUrl)) {
+                    Statement stmt = con.createStatement();
+                    ResultSet rs = stmt.executeQuery("SELECT count(1) FROM test_dws.dws_test_id");
+                    while (rs.next()) {
+                        result1 = rs.getInt(1);
+                    }
+                    stmt.close();
+                    con.close();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                return result1;
+            });
+            System.out.println("count: "+ result);
+        }
+
+    /**
+     * kerberos authentication
+     * @param krb5ConfPath
+     * @param keyTabPath
+     * @param principle
+     * @return
+     * @throws IOException
+     */
+        public static UserGroupInformation kerberosAuth(String krb5ConfPath, String keyTabPath, String principle) throws IOException {
+            System.setProperty("java.security.krb5.conf", krb5ConfPath);
+            Configuration conf = new Configuration();
+            conf.set("hadoop.security.authentication", "Kerberos");
+            UserGroupInformation.setConfiguration(conf);
+            UserGroupInformation loginInfo = UserGroupInformation.loginUserFromKeytabAndReturnUGI(principle, keyTabPath);
+
+
+            if (loginInfo.hasKerberosCredentials()) {
+                System.out.println("kerberos authentication success!");
+                System.out.println("login user: "+loginInfo.getUserName());
+            } else {
+                System.out.println("kerberos authentication fail!");
+            }
+
+            return loginInfo;
+        }
+}
+```
+
+
+
+## 2. 解读源码，了解Hikari连接池如何保持Connection个数在一定数目上
 
 **1.在我们初始化Hikari Pool参数后，第一次调用`com.zaxxer.hikari.HikariDataSource#getConnection()`的时候**，会进行初始化`HikariPool`，`HikariPool`正式管理Connection的类
 
@@ -92,9 +172,10 @@ Springboot使用hikari连接池并进行Kerberos认证访问Impala的demo地址:
 所以我们思路可以是，修改hikari的源码，在`com.zaxxer.hikari.util.DriverDataSource#getConnection()`方法调用 `driver.connect(jdbcUrl, driverProperties)`之前认证即可。并且hikari连接池的max-lifetime参数要小于Kerberos的过期时长
 
 
-## 2.修改Hikari源码，使其支持Kerberos认证
 
-### 2.1 修改HikariConfig类，添加Kerberos的四个参数
+## 3. 修改Hikari源码，使其支持Kerberos认证
+
+### 3.1 修改HikariConfig类，添加Kerberos的四个参数
 
 四个参数分别是:
 
@@ -148,7 +229,7 @@ keytabPath:对应principal的keytab的路径
 
 
 
-### 2.2 在PoolBase类中初始化DriverDataSource的时候，添加Kerberos参数
+### 3.2 在PoolBase类中初始化DriverDataSource的时候，添加Kerberos参数
 
 ```java
   private void initializeDataSource()
@@ -194,7 +275,7 @@ keytabPath:对应principal的keytab的路径
 
 
 
-### 2.3 DriverDataSource类在getConnection()的时候进Kerberos认证
+### 3.3 DriverDataSource类在getConnection()的时候进Kerberos认证
 
 ```java
 public final class DriverDataSource implements DataSource{
@@ -318,7 +399,7 @@ public final class DriverDataSource implements DataSource{
 
 
 
-## 3. 对修改后的源码打包
+## 4. 对修改后的源码打包
 
 **1.maven一定要用HikariCP的对应版本的maven版本**
 
@@ -370,7 +451,7 @@ toolchains.xml文件的内容：
 
 
 
-## 4.在springboot中使用hikari连接池并进行Kerberos认证
+## 5.在springboot中使用hikari连接池并进行Kerberos认证
 
 **1. 在application.yml添加四个参数**
 
