@@ -9,7 +9,7 @@
 
 
 
-## 1.解读源码，了解Hikari连接池如何保持Connection数据在一定数目上
+## 1.解读源码，了解Hikari连接池如何保持Connection个数在一定数目上
 
 **1.在我们初始化Hikari Pool参数后，第一次调用`com.zaxxer.hikari.HikariDataSource#getConnection()`的时候**，会进行初始化`HikariPool`，`HikariPool`正式管理Connection的类
 
